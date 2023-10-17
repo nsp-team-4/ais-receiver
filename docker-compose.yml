@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  ais-receiver:
+    image: auxority/ais-receiver:latest
+    build: .
+    ports:
+      - "2001:2001"
+    volumes:
+      - ./app:/app
+    env_file:
+      - ./docker/ais-receiver/.env
