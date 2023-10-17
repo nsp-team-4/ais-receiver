@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 )
@@ -27,13 +28,14 @@ func main() {
 }
 
 func handleConnection(conn net.Conn) {
-	buf := make([]byte, 1024)
+	reader := bufio.NewReader(conn)
 	for {
-		n, err := conn.Read(buf)
+		message, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println(err)
+			conn.Close()
 			return
 		}
-		fmt.Println("Received data:", string(buf[:n]))
+		fmt.Printf("Message incoming: %s", string(message))
+		conn.Write([]byte("Message received!\n"))
 	}
 }
