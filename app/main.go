@@ -1,55 +1,141 @@
 package main
 
 import (
-	"fmt"
+	"io"
+	"log"
 	"net"
 )
 
 func main() {
-	// Define the address and port for the server
-	address := "0.0.0.0" // Bind to all available network interfaces
-	port := "2001"       // Change this to your desired port number
+	log.Println("Server is running on port 2001")
 
-	// Create a TCP listener
-	listener, err := net.Listen("tcp", address+":"+port)
+	l, err := net.Listen("tcp", ":2001")
 	if err != nil {
-		fmt.Println("Error listening:", err)
+		log.Fatal(err)
 		return
 	}
-	defer listener.Close()
-
-	fmt.Printf("AIS server is listening on %s:%s\n", address, port)
+	defer l.Close()
 
 	for {
-		// Accept incoming connections and start a goroutine to handle each connection
-		conn, err := listener.Accept()
+		c, err := l.Accept()
+
 		if err != nil {
-			fmt.Println("Error accepting connection:", err)
+			log.Println(err)
 			continue
 		}
 
-		go handleConnection(conn)
+		go handleConn(c)
 	}
 }
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
+func handleConn(c net.Conn) {
+	// defer c.Close()
 
-	// Initialize a buffer to read data from the connection
-	buffer := make([]byte, 1024)
+	buf := make([]byte, 1024)
 
 	for {
-		// Read data from the connection into the buffer
-		n, err := conn.Read(buffer)
+		n, err := io.ReadFull(c, buf)
 		if err != nil {
-			fmt.Println("Error reading from connection:", err)
-			return
+			if err == io.EOF {
+				log.Println("Connection closed by client")
+				return
+			} else if err == io.ErrUnexpectedEOF {
+				log.Println("Received less data than expected")
+			} else {
+				log.Println(err)
+			}
+			break
 		}
 
-		// Process the received data (AIS messages) here
-		data := buffer[:n]
-		aisMessage := string(data)
-
-		fmt.Printf("Received AIS message: %s\n", aisMessage)
+		log.Printf("Received message: %s\n", string(buf[:n]))
 	}
 }
+
+// import (
+// 	"fmt"
+// 	"log"
+// 	"net"
+// )
+
+// type Message struct {
+// 	from    string
+// 	payload []byte
+// }
+
+// type Server struct {
+// 	listenAddr string
+// 	ln         net.Listener
+// 	quitch     chan struct{}
+// 	msgch      chan Message
+// }
+
+// func NewServer(listenAddr string) *Server {
+// 	return &Server{
+// 		listenAddr: listenAddr,
+// 		quitch:     make(chan struct{}),
+// 		msgch:      make(chan Message, 10),
+// 	}
+// }
+
+// func (s *Server) Start() error {
+// 	ln, err := net.Listen("tcp", s.listenAddr)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer ln.Close()
+// 	s.ln = ln
+// 	go s.acceptLoop()
+
+// 	<-s.quitch
+// 	close(s.msgch)
+
+// 	return nil
+// }
+
+// func (s *Server) acceptLoop() {
+// 	for {
+// 		conn, err := s.ln.Accept()
+// 		if err != nil {
+// 			fmt.Println("accept error:", err)
+// 			continue
+// 		}
+
+// 		fmt.Println("new connection to the server:", conn.RemoteAddr())
+
+// 		go s.readLoop(conn)
+// 	}
+// }
+
+// func (s *Server) readLoop(conn net.Conn) {
+// 	defer conn.Close()
+// 	buf := make([]byte, 2048)
+
+// 	for {
+// 		n, err := conn.Read(buf)
+// 		if err != nil {
+// 			fmt.Println("read error", err)
+// 			continue
+// 		}
+
+// 		s.msgch <- Message{
+// 			from:    conn.RemoteAddr().String(),
+// 			payload: buf[:n],
+// 		}
+
+// 		conn.Write([]byte("ok"))
+// 	}
+// }
+
+// func main() {
+// 	server := NewServer(":2001")
+
+// 	go func() {
+// 		for msg := range server.msgch {
+// 			str := fmt.Sprintf("received message from connection (%s):%s\n", msg.from, string(msg.payload))
+// 			fmt.Println(msg.payload)
+// 			fmt.Println(str)
+// 		}
+// 	}()
+
+// 	log.Fatal(server.Start())
+// }

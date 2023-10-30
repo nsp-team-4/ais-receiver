@@ -21,6 +21,11 @@ run: ## Start the application
 	@printf "\033[32mStarting the application...\033[0m\n"
 	@docker compose up -d
 
+.PHONY: sh
+sh: ## Runs a shell instance in the container
+	@printf "\033[32mRunning a shell instance in the container...\033[0m\n"
+	@docker compose exec ais-receiver sh
+
 .PHONY: upload
 upload: ## Uploads the Docker image to Docker Hub
 	@printf "\033[32mUploading the Docker image to Docker Hub...\033[0m\n"
