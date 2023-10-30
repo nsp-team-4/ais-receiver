@@ -4,38 +4,27 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 )
 
 func main() {
-	fmt.Println("Starting server...")
-	ln, err := net.Listen("tcp", ":2001")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer ln.Close()
+	fmt.Println("Launching server...")
 
-	fmt.Println("Listening on port 2001...")
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		fmt.Println("New connection accepted.")
-		go handleConnection(conn)
-	}
-}
+	// listen on all interfaces
+	ln, _ := net.Listen("tcp", ":2001")
 
-func handleConnection(conn net.Conn) {
-	reader := bufio.NewReader(conn)
+	// accept connection on port
+	conn, _ := ln.Accept()
+
+	// run loop forever (or until ctrl-c)
 	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			conn.Close()
-			return
-		}
-		fmt.Printf("Message incoming: %s", string(message))
-		conn.Write([]byte("Message received!\n"))
+		// will listen for message to process ending in newline (\n)
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		// output message received
+		fmt.Print("Message Received:", string(message))
+		// sample process for string received
+		newmessage := strings.ToUpper(message)
+		// send new string back to client
+		conn.Write([]byte(newmessage + "\n"))
 	}
 }

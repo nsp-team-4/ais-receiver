@@ -24,7 +24,7 @@ run: ## Start the application
 .PHONY: upload
 upload: ## Uploads the Docker image to Docker Hub
 	@printf "\033[32mUploading the Docker image to Docker Hub...\033[0m\n"
-	@printf	"\033[33mBuilding the Docker image...\033[0m "
+	@printf	"\033[32mBuilding the Docker image...\033[0m "
 	@docker build -t auxority/ais-receiver .
 	@printf "\033[32mPushing the image to Docker Hub...\033[0m\n"
 	@docker push auxority/ais-receiver
