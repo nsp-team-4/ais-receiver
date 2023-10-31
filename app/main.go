@@ -1,51 +1,66 @@
 package main
 
 import (
+	"bufio"
 	"io"
 	"log"
 	"net"
+	"strings"
 )
 
 func main() {
 	log.Println("Server is running on port 2001")
 
-	l, err := net.Listen("tcp", ":2001")
+	listener, err := net.Listen("tcp", ":2001")
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-	defer l.Close()
+
+	defer listener.Close()
 
 	for {
-		c, err := l.Accept()
+		conn, err := listener.Accept()
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		go handleConn(c)
+		go handleConnection(conn)
 	}
 }
 
-func handleConn(c net.Conn) {
-	buf := make([]byte, 128)
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	log.Printf("Client connected %s", conn.RemoteAddr().String())
+
+	reader := bufio.NewReader(conn)
+	var messageBuffer string
 
 	for {
-		n, err := io.ReadFull(c, buf)
+		messagePart, err := reader.ReadString('\n')
+
 		if err != nil {
 			if err == io.EOF {
 				log.Println("Connection closed by client")
-			} else if err == io.ErrUnexpectedEOF {
-				log.Println("Received less data than expected")
 			} else {
 				log.Println(err)
 			}
 			break
 		}
 
-		log.Printf("Received message: %s\n", string(buf[:n]))
-	}
+		messageBuffer += messagePart
 
-	defer c.Close()
+		messages := strings.Split(messageBuffer, "\r\n")
+		if len(messages) > 1 {
+			for _, message := range messages[:len(messages)-1] {
+				if strings.HasPrefix(message, "!AIVDM") {
+					log.Printf("Received message: %s\n", message)
+				}
+			}
+			messageBuffer = messages[len(messages)-1]
+		}
+	}
 }
