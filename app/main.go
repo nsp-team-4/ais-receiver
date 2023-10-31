@@ -2,10 +2,8 @@ package main
 
 import (
 	"bufio"
-	"io"
 	"log"
 	"net"
-	"strings"
 )
 
 func main() {
@@ -14,21 +12,23 @@ func main() {
 	listener, err := net.Listen("tcp", ":2001")
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	defer listener.Close()
 
 	for {
-		conn, err := listener.Accept()
-
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		go handleConnection(conn)
+		acceptConnection(listener)
 	}
+}
+
+func acceptConnection(listener net.Listener) {
+	conn, err := listener.Accept()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	go handleConnection(conn)
 }
 
 func handleConnection(conn net.Conn) {
@@ -36,31 +36,13 @@ func handleConnection(conn net.Conn) {
 
 	log.Printf("Client connected %s", conn.RemoteAddr().String())
 
-	reader := bufio.NewReader(conn)
-	var messageBuffer string
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		message := scanner.Text()
+		log.Printf("Received message: %s\n", message)
+	}
 
-	for {
-		messagePart, err := reader.ReadString('\n')
-
-		if err != nil {
-			if err == io.EOF {
-				log.Println("Connection closed by client")
-			} else {
-				log.Println(err)
-			}
-			break
-		}
-
-		messageBuffer += messagePart
-
-		messages := strings.Split(messageBuffer, "\r\n")
-		if len(messages) > 1 {
-			for _, message := range messages[:len(messages)-1] {
-				if strings.HasPrefix(message, "!AIVDM") {
-					log.Printf("Received message: %s\n", message)
-				}
-			}
-			messageBuffer = messages[len(messages)-1]
-		}
+	if err := scanner.Err(); err != nil {
+		log.Println("Error reading:", err)
 	}
 }
