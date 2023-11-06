@@ -30,7 +30,7 @@ func main() {
 
 func triggerEventHub(aisMessage string) {
 	namespaceConnectionString := "Endpoint=sb://nsp-ais.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=rz7Wmc79oc07VfWLlsLy4SR8iBbS7i7JA+AEhJBUnB0="
-	eventHubName := "nsp-ais"
+	eventHubName := "test123"
 
 	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(namespaceConnectionString, eventHubName, nil)
 	if err != nil {
