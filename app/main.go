@@ -51,6 +51,9 @@ func triggerEventHub(aisMessage string) {
 
 	for i := 0; i < len(events); i++ {
 		err = batch.AddEventData(events[i], nil)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// send the batch of events to the event hub
