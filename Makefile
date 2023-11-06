@@ -21,6 +21,11 @@ run: ## Start the application
 	@printf "\033[32mStarting the application...\033[0m\n"
 	@docker compose up -d
 
+.PHONY: stop
+stop: ## Stop the application
+	@printf "\033[32mStopping the application...\033[0m\n"
+	@docker compose stop
+
 .PHONY: sh
 sh: ## Runs a shell instance in the container
 	@printf "\033[32mRunning a shell instance in the container...\033[0m\n"
