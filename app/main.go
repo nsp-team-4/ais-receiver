@@ -76,10 +76,18 @@ func sendToBlobStorage(aisMessage string) {
 
 	client, err := azblob.NewClient(url, credential, nil)
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create the container
 	containerName := "quickstart-sample-container"
 	fmt.Printf("Creating a container named %s\n", containerName)
 	_, err = client.CreateContainer(ctx, containerName, nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	data := []byte(aisMessage)
 	blobName := "ais-data"
@@ -87,6 +95,9 @@ func sendToBlobStorage(aisMessage string) {
 	// Upload to data to blob storage
 	fmt.Printf("Uploading a blob named %s\n", blobName)
 	_, err = client.UploadBuffer(ctx, containerName, blobName, data, &azblob.UploadBufferOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func processClientMessage(namespaceConnectionString, eventHubName, message string) {
