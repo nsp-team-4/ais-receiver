@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"log"
 	"net"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
@@ -21,8 +19,8 @@ func main() {
 
 	// Azure Event Hubs configuration
 	// Create an Event Hubs producer client using the connection string and event hub name
-	namespaceConnectionString := "Endpoint=sb://nsp-ais.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=rz7Wmc79oc07VfWLlsLy4SR8iBbS7i7JA+AEhJBUnB0="
-	eventHubName := "test123"
+	namespaceConnectionString := "Endpoint=sb://aiseventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=evrLLqNpWg6VlHSH8+eAvha//GtM9mP6b+AEhAQtHrY="
+	eventHubName := "ais-data-eventhub"
 
 	defer listener.Close()
 
