@@ -4,18 +4,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-	"github.com/Azure/azure-storage-blob-go/azblob"
 	"log"
 	"net"
-	"net/url"
-	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
+// TODO: Replace with environment variables (and add these environment variables to the container instance)
 const (
-	azureStorageAccountName = "aisdatansp"
-	azureStorageAccessKey   = "n7Cr9caLWJM+tFRSVzcqFmgRRCHKyHYhtm7u3RuBeS88XWp/mAY7hUqP13oTY5K9SOBmGfHu2XIS+AStxQnHxw=="
-	containerName           = "test"
+	connectionString = "Endpoint=sb://aiseventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=pRegkXY51RiR1T2BsA/licwSTJ8HGCi9N+AEhF9Akug="
+	eventHubName     = "ais-data-eventhub"
 )
 
 func main() {
@@ -26,29 +24,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Azure Event Hubs configuration
-	// Create an Event Hubs producer client using the connection string and event hub name
-	namespaceConnectionString := "Endpoint=sb://aiseventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=evrLLqNpWg6VlHSH8+eAvha//GtM9mP6b+AEhAQtHrY="
-	eventHubName := "ais-data-eventhub"
-
 	defer listener.Close()
 
 	for {
-		acceptConnection(listener, namespaceConnectionString, eventHubName)
+		acceptConnection(listener)
 	}
 }
 
-func acceptConnection(listener net.Listener, namespaceConnectionString, eventHubName string) {
+func acceptConnection(listener net.Listener) {
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	go handleConnection(conn, namespaceConnectionString, eventHubName)
+	go handleConnection(conn)
 }
 
-func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName string) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	log.Printf("Client connected %s", conn.RemoteAddr().String())
@@ -56,9 +49,7 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
-		log.Printf("Received message: %s\n", message)
-		go sendToBlobStorage(message)
-		go processClientMessage(namespaceConnectionString, eventHubName, message)
+		go handleMessage(message)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -66,73 +57,91 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 	}
 }
 
-func sendToBlobStorage(aisMessage string) {
-	// use the constants to access the blob storage and add the aisMessage to the blob storage
-	credential, err := azblob.NewSharedKeyCredential(azureStorageAccountName, azureStorageAccessKey)
+func handleMessage(message string) {
+	log.Printf("Received AIS message: %s\n", message)
+
+	err := sendMessageToEventHub(message)
 	if err != nil {
-		log.Printf("Error creating shared key credential: %v", err)
-		return
-	}
-
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", azureStorageAccountName, containerName))
-	containerURL := azblob.NewContainerURL(*u, p)
-
-	// Create a unique name for the blob
-	blobName := fmt.Sprintf("AISMessage_%s.txt", time.Now().Format("20060102150405"))
-
-	// Get a blob URL reference
-	blobURL := containerURL.NewBlockBlobURL(blobName)
-
-	// Convert the AIS message to bytes
-	data := []byte(aisMessage)
-
-	// Create a context to control the request execution
-	ctx := context.Background()
-
-	// Create the blob
-	_, err = azblob.UploadBufferToBlockBlob(ctx, data, blobURL, azblob.UploadToBlockBlobOptions{})
-	if err != nil {
-		log.Printf("Error uploading to Blob Storage: %v", err)
+		log.Fatalf("failed to send message to event hub: %s", err)
 	}
 }
 
-func processClientMessage(namespaceConnectionString, eventHubName, message string) {
-	// Process the message received from the client and send it to the Event Hub
-	err := triggerEventHub(namespaceConnectionString, eventHubName, message)
+func sendMessageToEventHub(aisMessage string) error {
+	producerClient, err := createProducerClient()
 	if err != nil {
-		log.Printf("Error sending message to Event Hub: %v", err)
+		return fmt.Errorf("failed to send message to event hub: %w", err)
 	}
-}
 
-func triggerEventHub(namespaceConnectionString, eventHubName, aisMessage string) error {
-	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(namespaceConnectionString, eventHubName, nil)
-	if err != nil {
-		return err
-	}
 	defer producerClient.Close(context.TODO())
 
-	// Create a batch for the AIS message
-	events := messageToEvent(aisMessage)
-
-	newBatchOptions := &azeventhubs.EventDataBatchOptions{}
-	batch, err := producerClient.NewEventDataBatch(context.TODO(), newBatchOptions)
+	err = sendMessageAsBatch(producerClient, aisMessage)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send message to event hub: %w", err)
 	}
 
-	for i := 0; i < len(events); i++ {
-		err = batch.AddEventData(events[i], nil)
+	return nil
+}
+
+func createProducerClient() (*azeventhubs.ProducerClient, error) {
+	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(connectionString, eventHubName, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create producer client: %w", err)
+	}
+
+	return producerClient, nil
+}
+
+func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage string) error {
+	batch, err := createEventBatch(producerClient)
+	if err != nil {
+		return fmt.Errorf("failed to send message as batch: %w", err)
+	}
+
+	err = fillEventBatch(batch, aisMessage)
+	if err != nil {
+		return fmt.Errorf("failed to send message as batch: %w", err)
+	}
+
+	err = sendBatchToEventHub(batch, producerClient)
+	if err != nil {
+		return fmt.Errorf("failed to send message as batch: %w", err)
+	}
+
+	return nil
+}
+
+func sendBatchToEventHub(batch *azeventhubs.EventDataBatch, producerClient *azeventhubs.ProducerClient) error {
+	err := producerClient.SendEventDataBatch(context.Background(), batch, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send batch: %w", err)
+	}
+
+	return nil
+}
+
+func fillEventBatch(batch *azeventhubs.EventDataBatch, aisMessage string) error {
+	events := messageToEvents(aisMessage)
+	for _, event := range events {
+		err := batch.AddEventData(event, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to add event data to batch: %w", err)
 		}
 	}
 
-	// Send the batch of events to the Event Hub
-	return producerClient.SendEventDataBatch(context.TODO(), batch, nil)
+	return nil
 }
 
-func messageToEvent(aisMessage string) []*azeventhubs.EventData {
+func createEventBatch(producerClient *azeventhubs.ProducerClient) (*azeventhubs.EventDataBatch, error) {
+	newBatchOptions := &azeventhubs.EventDataBatchOptions{}
+	batch, err := producerClient.NewEventDataBatch(context.TODO(), newBatchOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event batch: %w", err)
+	}
+
+	return batch, nil
+}
+
+func messageToEvents(aisMessage string) []*azeventhubs.EventData {
 	return []*azeventhubs.EventData{
 		{
 			Body: []byte(aisMessage),
