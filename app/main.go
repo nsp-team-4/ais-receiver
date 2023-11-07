@@ -110,5 +110,8 @@ func messageToEvent(aisMessage string) []*azeventhubs.EventData {
 		{
 			Body: []byte(aisMessage),
 		},
+		{
+			Body: []byte(aisMessage),
+		},
 	}
 }
