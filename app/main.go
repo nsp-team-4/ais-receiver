@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
@@ -17,29 +18,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Azure Event Hubs configuration
-	// Create an Event Hubs producer client using the connection string and event hub name
-	namespaceConnectionString := "Endpoint=sb://aiseventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=evrLLqNpWg6VlHSH8+eAvha//GtM9mP6b+AEhAQtHrY="
-	eventHubName := "ais-data-eventhub"
-
 	defer listener.Close()
 
 	for {
-		acceptConnection(listener, namespaceConnectionString, eventHubName)
+		acceptConnection(listener)
 	}
 }
 
-func acceptConnection(listener net.Listener, namespaceConnectionString, eventHubName string) {
+func acceptConnection(listener net.Listener) {
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	go handleConnection(conn, namespaceConnectionString, eventHubName)
+	go handleConnection(conn)
 }
 
-func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName string) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	log.Printf("Client connected %s", conn.RemoteAddr().String())
@@ -48,7 +44,7 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 	for scanner.Scan() {
 		message := scanner.Text()
 		log.Printf("Received message: %s\n", message)
-		go processClientMessage(namespaceConnectionString, eventHubName, message)
+		go processClientMessage(message)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -56,19 +52,31 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 	}
 }
 
-func processClientMessage(namespaceConnectionString, eventHubName, message string) {
+func processClientMessage(message string) {
 	// Process the message received from the client and send it to the Event Hub
-	err := triggerEventHub(namespaceConnectionString, eventHubName, message)
+	err := triggerEventHub(message)
 	if err != nil {
 		log.Printf("Error sending message to Event Hub: %v", err)
 	}
 }
 
-func triggerEventHub(namespaceConnectionString, eventHubName, aisMessage string) error {
-	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(namespaceConnectionString, eventHubName, nil)
+func triggerEventHub(aisMessage string) error {
+	eventHubNamespace := "aiseventhubs.servicebus.windows.net"
+	eventHubName := "ais-data-eventhub"
+
+	defaultAzureCred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return err
 	}
+
+	// connectionString := "Endpoint=sb://aiseventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=evrLLqNpWg6VlHSH8+eAvha//GtM9mP6b+AEhAQtHrY="
+	// producerClient, err := azeventhubs.NewProducerClientFromConnectionString(namespaceConnectionString, eventHubName, nil)
+
+	producerClient, err := azeventhubs.NewProducerClient(eventHubNamespace, eventHubName, defaultAzureCred, nil)
+	if err != nil {
+		return err
+	}
+
 	defer producerClient.Close(context.TODO())
 
 	// Create a batch for the AIS message
@@ -87,8 +95,14 @@ func triggerEventHub(namespaceConnectionString, eventHubName, aisMessage string)
 		}
 	}
 
-	// Send the batch of events to the Event Hub
-	return producerClient.SendEventDataBatch(context.TODO(), batch, nil)
+	if batch.NumEvents() > 0 {
+		err := producerClient.SendEventDataBatch(context.Background(), batch, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func messageToEvent(aisMessage string) []*azeventhubs.EventData {
