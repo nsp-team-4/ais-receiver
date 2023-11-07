@@ -3,10 +3,18 @@ package main
 import (
 	"bufio"
 	"context"
+	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"log"
 	"net"
+)
 
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+const (
+	azureStorageAccountName = "YOUR_STORAGE_ACCOUNT_NAME"
+	azureStorageAccessKey   = "YOUR_STORAGE_ACCOUNT_KEY"
+	containerName           = "aisdatansp"
 )
 
 func main() {
@@ -48,12 +56,37 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 	for scanner.Scan() {
 		message := scanner.Text()
 		log.Printf("Received message: %s\n", message)
+		go sendToBlobStorage(message)
 		go processClientMessage(namespaceConnectionString, eventHubName, message)
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Println("Error reading:", err)
 	}
+}
+
+func sendToBlobStorage(aisMessage string) {
+	url := "https://aisdatansp.blob.core.windows.net/"
+	ctx := context.Background()
+
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client, err := azblob.NewClient(url, credential, nil)
+
+	// Create the container
+	containerName := "quickstart-sample-container"
+	fmt.Printf("Creating a container named %s\n", containerName)
+	_, err = client.CreateContainer(ctx, containerName, nil)
+
+	data := []byte(aisMessage)
+	blobName := "ais-data"
+
+	// Upload to data to blob storage
+	fmt.Printf("Uploading a blob named %s\n", blobName)
+	_, err = client.UploadBuffer(ctx, containerName, blobName, data, &azblob.UploadBufferOptions{})
 }
 
 func processClientMessage(namespaceConnectionString, eventHubName, message string) {
