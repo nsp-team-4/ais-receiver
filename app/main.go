@@ -4,17 +4,18 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"log"
 	"net"
+	"net/url"
+	"time"
 )
 
 const (
-	azureStorageAccountName = "YOUR_STORAGE_ACCOUNT_NAME"
-	azureStorageAccessKey   = "YOUR_STORAGE_ACCOUNT_KEY"
-	containerName           = "aisdatansp"
+	azureStorageAccountName = "aisdatansp"
+	azureStorageAccessKey   = "n7Cr9caLWJM+tFRSVzcqFmgRRCHKyHYhtm7u3RuBeS88XWp/mAY7hUqP13oTY5K9SOBmGfHu2XIS+AStxQnHxw=="
+	containerName           = "test"
 )
 
 func main() {
@@ -66,37 +67,33 @@ func handleConnection(conn net.Conn, namespaceConnectionString, eventHubName str
 }
 
 func sendToBlobStorage(aisMessage string) {
-	url := "https://aisdatansp.blob.core.windows.net/"
+	// use the constants to access the blob storage and add the aisMessage to the blob storage
+	credential, err := azblob.NewSharedKeyCredential(azureStorageAccountName, azureStorageAccessKey)
+	if err != nil {
+		log.Printf("Error creating shared key credential: %v", err)
+		return
+	}
+
+	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
+	u, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", azureStorageAccountName, containerName))
+	containerURL := azblob.NewContainerURL(*u, p)
+
+	// Create a unique name for the blob
+	blobName := fmt.Sprintf("AISMessage_%s.txt", time.Now().Format("20060102150405"))
+
+	// Get a blob URL reference
+	blobURL := containerURL.NewBlockBlobURL(blobName)
+
+	// Convert the AIS message to bytes
+	data := []byte(aisMessage)
+
+	// Create a context to control the request execution
 	ctx := context.Background()
 
-	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	// Create the blob
+	_, err = azblob.UploadBufferToBlockBlob(ctx, data, blobURL, azblob.UploadToBlockBlobOptions{})
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	client, err := azblob.NewClient(url, credential, nil)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create the container
-	containerName := "quickstart-sample-container"
-	fmt.Printf("Creating a container named %s\n", containerName)
-	_, err = client.CreateContainer(ctx, containerName, nil)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	data := []byte(aisMessage)
-	blobName := "ais-data"
-
-	// Upload to data to blob storage
-	fmt.Printf("Uploading a blob named %s\n", blobName)
-	_, err = client.UploadBuffer(ctx, containerName, blobName, data, &azblob.UploadBufferOptions{})
-	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error uploading to Blob Storage: %v", err)
 	}
 }
 
