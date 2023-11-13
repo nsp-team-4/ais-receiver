@@ -77,7 +77,7 @@ func handleMessage(message string) {
 		Type: decoded.Packet.GetHeader().MessageID,
 	}
 
-	log.Printf("AIS data: %v\n", aisData)
+	log.Printf("AIS data: %v\n", aisData.Nmae)
 
 	err = sendMessageToEventHub(message)
 	if err != nil {
