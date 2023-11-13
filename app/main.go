@@ -65,16 +65,21 @@ type aisData struct {
 
 func handleMessage(message string) {
 	log.Printf("Received AIS message: %s\n", message)
+
+	if message[0] != '!' && message[0] != '$' {
+		return
+	}
+
 	nm := aisnmea.NMEACodecNew(ais.CodecNew(false, false))
 
 	log.Printf("NMEACodecNew: %v\n", nm)
 
-	//decoded, err := nm.ParseSentence(message)
-	//if err != nil {
-	//	log.Fatalf("failed to decode NMEA sentence: %s", err)
-	//}
-	//
-	//log.Printf("Decoded: %v\n", decoded)
+	decoded, err := nm.ParseSentence(message)
+	if err != nil {
+		log.Fatalf("failed to decode NMEA sentence: %s", err)
+	}
+
+	log.Printf("Decoded: %v\n", decoded)
 
 	//aisData := aisData{
 	//	Nmae: decoded.Packet.GetHeader().UserID,
@@ -83,7 +88,7 @@ func handleMessage(message string) {
 	//
 	//log.Printf("AIS data: %v\n", aisData.Nmae)
 
-	err := sendMessageToEventHub(message)
+	err = sendMessageToEventHub(message)
 	if err != nil {
 		log.Fatalf("failed to send message to event hub: %s", err)
 	}
