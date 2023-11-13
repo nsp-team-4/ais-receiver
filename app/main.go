@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/BertoldVdb/go-ais"
+	"github.com/BertoldVdb/go-ais/aisnmea"
 	"log"
 	"net"
-
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
 // TODO: Replace with environment variables (and add these environment variables to the container instance)
@@ -57,10 +58,28 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+type aisData struct {
+	Nmae uint32
+	Type uint8
+}
+
 func handleMessage(message string) {
 	log.Printf("Received AIS message: %s\n", message)
+	nm := aisnmea.NMEACodecNew(ais.CodecNew(false, false))
 
-	err := sendMessageToEventHub(message)
+	decoded, err := nm.ParseSentence(message)
+	if err != nil {
+		log.Fatalf("failed to decode NMEA sentence: %s", err)
+	}
+
+	aisData := aisData{
+		Nmae: decoded.Packet.GetHeader().UserID,
+		Type: decoded.Packet.GetHeader().MessageID,
+	}
+
+	log.Printf("AIS data: %v\n", aisData)
+
+	err = sendMessageToEventHub(message)
 	if err != nil {
 		log.Fatalf("failed to send message to event hub: %s", err)
 	}
