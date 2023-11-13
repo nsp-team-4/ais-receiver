@@ -69,19 +69,19 @@ func handleMessage(message string) {
 
 	log.Printf("NMEACodecNew: %v\n", nm)
 
-	//decoded, err := nm.ParseSentence(message)
-	//if err != nil {
-	//	log.Fatalf("failed to decode NMEA sentence: %s", err)
-	//}
-	//
-	//aisData := aisData{
-	//	Nmae: decoded.Packet.GetHeader().UserID,
-	//	Type: decoded.Packet.GetHeader().MessageID,
-	//}
-	//
-	//log.Printf("AIS data: %v\n", aisData.Nmae)
+	decoded, err := nm.ParseSentence(message)
+	if err != nil {
+		log.Fatalf("failed to decode NMEA sentence: %s", err)
+	}
 
-	err := sendMessageToEventHub(message)
+	aisData := aisData{
+		Nmae: decoded.Packet.GetHeader().UserID,
+		Type: decoded.Packet.GetHeader().MessageID,
+	}
+
+	log.Printf("AIS data: %v\n", aisData.Nmae)
+
+	err = sendMessageToEventHub(message)
 	if err != nil {
 		log.Fatalf("failed to send message to event hub: %s", err)
 	}
