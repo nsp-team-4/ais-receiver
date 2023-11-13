@@ -81,12 +81,12 @@ func handleMessage(message string) {
 
 	log.Printf("Decoded: %v\n", decoded)
 
-	//aisData := aisData{
-	//	Nmae: decoded.Packet.GetHeader().UserID,
-	//	Type: decoded.Packet.GetHeader().MessageID,
-	//}
-	//
-	//log.Printf("AIS data: %v\n", aisData.Nmae)
+	aisData := aisData{
+		Nmae: decoded.Packet.GetHeader().UserID,
+		Type: decoded.Packet.GetHeader().MessageID,
+	}
+
+	log.Printf("AIS data: %v\n", aisData.Nmae)
 
 	err = sendMessageToEventHub(message)
 	if err != nil {
