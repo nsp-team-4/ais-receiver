@@ -13,7 +13,7 @@ import (
 
 // TODO: Replace with environment variables (and add these environment variables to the container instance)
 const (
-	connectionString = "Endpoint=sb://nspeventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5IlHGz3aULWsHg3KH4tjN4jatLjL9kc6G+AEhJdt/Jk="
+	connectionString = "Endpoint=sb://event-hubs-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=AMM5XmxuGkvP1uJL9YYIF/3GlYjeAHU81+AEhMzqO8A="
 	eventHubName     = "ais-event-hub"
 )
 
