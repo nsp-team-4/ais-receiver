@@ -6,14 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-)
-
-// TODO: Replace with environment variables (and add these environment variables to the container instance)
-const (
-	connectionString = "Endpoint=sb://nspeventhubs.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5IlHGz3aULWsHg3KH4tjN4jatLjL9kc6G+AEhJdt/Jk="
-	eventHubName     = "ais-event-hub"
 )
 
 func main() {
@@ -83,6 +78,8 @@ func sendMessageToEventHub(aisMessage string) error {
 }
 
 func createProducerClient() (*azeventhubs.ProducerClient, error) {
+	connectionString := os.Getenv("ENDPOINT_CONNECTION_STRING")
+	eventHubName := os.Getenv("EVENT_HUB_NAME")
 	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(connectionString, eventHubName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer client: %w", err)
