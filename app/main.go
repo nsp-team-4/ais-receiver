@@ -44,7 +44,10 @@ func handleConnection(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
-		go handleMessage(message)
+		err := handleMessage(message)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	err := scanner.Err()
@@ -53,13 +56,15 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func handleMessage(message string) {
+func handleMessage(message string) error {
 	log.Printf("Received AIS message: %s\n", message)
 
 	err := sendMessageToEventHub(message)
 	if err != nil {
-		log.Fatalf("failed to send message to event hub: %s", err)
+		return fmt.Errorf("failed to send message to event hub: %s", err)
 	}
+
+	return nil
 }
 
 func sendMessageToEventHub(aisMessage string) error {
