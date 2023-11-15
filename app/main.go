@@ -81,7 +81,7 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 	connectionString := os.Getenv("ENDPOINT_CONNECTION_STRING")
 	eventHubName := os.Getenv("EVENT_HUB_NAME")
 
-	log.Println("Creating producer client for event hub %s", eventHubName)
+	log.Printf("Creating producer client for event hub %s", eventHubName)
 
 	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(connectionString, eventHubName, nil)
 	if err != nil {
