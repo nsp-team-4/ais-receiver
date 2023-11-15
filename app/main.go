@@ -81,8 +81,6 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 	connectionString := os.Getenv("ENDPOINT_CONNECTION_STRING")
 	eventHubName := os.Getenv("EVENT_HUB_NAME")
 
-	log.Printf("Creating producer client for event hub %s", eventHubName)
-
 	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(connectionString, eventHubName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer client: %w", err)
@@ -92,16 +90,19 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 }
 
 func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage string) error {
+	log.Println("Creating empty event batch...")
 	batch, err := createEventBatch(producerClient)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
 
+	log.Println("Filling event batch...")
 	err = fillEventBatch(batch, aisMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
 
+	log.Println("Sending message to event hub...")
 	err = sendBatchToEventHub(batch, producerClient)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
