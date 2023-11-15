@@ -139,7 +139,9 @@ func fillEventBatch(batch *azeventhubs.EventDataBatch, aisMessage string) error 
 }
 
 func createEventBatch(producerClient *azeventhubs.ProducerClient) (*azeventhubs.EventDataBatch, error) {
+	log.Printf("Idk if this works %v", producerClient)
 	newBatchOptions := &azeventhubs.EventDataBatchOptions{}
+	log.Printf("Maybe it does? %v", newBatchOptions)
 	batch, err := producerClient.NewEventDataBatch(context.TODO(), newBatchOptions)
 	log.Printf("Batch created: %v", batch)
 	log.Printf("Meme error: %v", err)
