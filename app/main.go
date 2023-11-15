@@ -4,17 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-	"github.com/BertoldVdb/go-ais"
-	"github.com/BertoldVdb/go-ais/aisnmea"
 	"log"
 	"net"
-)
+	"os"
 
-// TODO: Replace with environment variables (and add these environment variables to the container instance)
-const (
-	connectionString = "Endpoint=sb://event-hubs-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=AMM5XmxuGkvP1uJL9YYIF/3GlYjeAHU81+AEhMzqO8A="
-	eventHubName     = "ais-event-hub"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
 func main() {
@@ -58,37 +52,10 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-type aisData struct {
-	Nmae uint32
-	Type uint8
-}
-
 func handleMessage(message string) {
 	log.Printf("Received AIS message: %s\n", message)
 
-	if message[0] != '!' && message[0] != '$' {
-		return
-	}
-
-	nm := aisnmea.NMEACodecNew(ais.CodecNew(false, false))
-
-	log.Printf("NMEACodecNew: %v\n", nm)
-
-	decoded, err := nm.ParseSentence(message)
-	if err != nil {
-		log.Fatalf("failed to decode NMEA sentence: %s", err)
-	}
-
-	log.Printf("Decoded: %v\n", decoded)
-
-	aisData := aisData{
-		Nmae: decoded.Packet.GetHeader().UserID,
-		Type: decoded.Packet.GetHeader().MessageID,
-	}
-
-	log.Printf("AIS data: %v\n", aisData.Nmae)
-
-	err = sendMessageToEventHub(message)
+	err := sendMessageToEventHub(message)
 	if err != nil {
 		log.Fatalf("failed to send message to event hub: %s", err)
 	}
@@ -111,6 +78,11 @@ func sendMessageToEventHub(aisMessage string) error {
 }
 
 func createProducerClient() (*azeventhubs.ProducerClient, error) {
+	connectionString := os.Getenv("ENDPOINT_CONNECTION_STRING")
+	eventHubName := os.Getenv("EVENT_HUB_NAME")
+
+	log.Println("Creating producer client for event hub %s", eventHubName)
+
 	producerClient, err := azeventhubs.NewProducerClientFromConnectionString(connectionString, eventHubName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer client: %w", err)
@@ -143,6 +115,8 @@ func sendBatchToEventHub(batch *azeventhubs.EventDataBatch, producerClient *azev
 	if err != nil {
 		return fmt.Errorf("failed to send batch: %w", err)
 	}
+
+	log.Println("Message sent to event hub!")
 
 	return nil
 }
