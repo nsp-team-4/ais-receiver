@@ -36,6 +36,11 @@ sh: ## Runs a shell instance in the container
 	@printf "\033[32mRunning a shell instance in the container...\033[0m\n"
 	@docker compose exec ais-receiver sh
 
+.PHONY: logs
+logs: ## Shows the logs of the container
+	@printf "\033[32mShowing the logs of the container...\033[0m\n"
+	@docker compose logs -f --tail=10
+
 .PHONY: upload
 upload: ## Uploads the Docker image to Docker Hub
 	@printf "\033[32mUploading the Docker image to Docker Hub...\033[0m\n"
