@@ -47,7 +47,8 @@ func handleConnection(conn net.Conn) {
 		go handleMessage(message)
 	}
 
-	if err := scanner.Err(); err != nil {
+	err := scanner.Err()
+	if err != nil {
 		log.Println("Error reading:", err)
 	}
 }
@@ -91,7 +92,11 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 
 func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage string) error {
 	log.Println("Creating empty event batch...")
+
 	batch, err := createEventBatch(producerClient)
+	log.Printf("Batch created: %v", batch)
+	log.Printf("Fake error: %v", err)
+
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
@@ -102,7 +107,6 @@ func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage s
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
 
-	log.Println("Sending message to event hub...")
 	err = sendBatchToEventHub(batch, producerClient)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
@@ -116,8 +120,6 @@ func sendBatchToEventHub(batch *azeventhubs.EventDataBatch, producerClient *azev
 	if err != nil {
 		return fmt.Errorf("failed to send batch: %w", err)
 	}
-
-	log.Println("Message sent to event hub!")
 
 	return nil
 }
