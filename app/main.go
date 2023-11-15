@@ -44,7 +44,7 @@ func handleConnection(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
-		go handleMessage(message)
+		handleMessage(message)
 	}
 
 	err := scanner.Err()
