@@ -26,6 +26,11 @@ stop: ## Stop the application
 	@printf "\033[32mStopping the application...\033[0m\n"
 	@docker compose stop
 
+.PHONY: restart
+restart: ## Restart the application
+	@make stop
+	@make run
+
 .PHONY: sh
 sh: ## Runs a shell instance in the container
 	@printf "\033[32mRunning a shell instance in the container...\033[0m\n"
