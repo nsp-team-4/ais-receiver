@@ -116,6 +116,8 @@ func sendBatchToEventHub(batch *azeventhubs.EventDataBatch, producerClient *azev
 		return fmt.Errorf("failed to send batch: %w", err)
 	}
 
+	log.Println("Batch sent successfully")
+
 	return nil
 }
 
