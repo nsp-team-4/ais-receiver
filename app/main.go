@@ -44,10 +44,7 @@ func handleConnection(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
-		err := handleMessage(message)
-		if err != nil {
-			log.Println(err)
-		}
+		go handleMessage(message)
 	}
 
 	err := scanner.Err()
@@ -56,15 +53,14 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func handleMessage(message string) error {
+func handleMessage(message string) {
 	log.Printf("Received AIS message: %s\n", message)
 
 	err := sendMessageToEventHub(message)
 	if err != nil {
-		return fmt.Errorf("failed to send message to event hub: %s", err)
+		log.Fatalf("failed to handle message: %v", err)
+		return
 	}
-
-	return nil
 }
 
 func sendMessageToEventHub(aisMessage string) error {
@@ -96,14 +92,10 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 }
 
 func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage string) error {
-	log.Println("Creating empty event batch...")
-
 	batch, err := createEventBatch(producerClient)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
-
-	log.Println("Filling event batch...")
 
 	err = fillEventBatch(batch, aisMessage)
 	if err != nil {
@@ -141,19 +133,7 @@ func fillEventBatch(batch *azeventhubs.EventDataBatch, aisMessage string) error 
 
 func createEventBatch(producerClient *azeventhubs.ProducerClient) (*azeventhubs.EventDataBatch, error) {
 	newBatchOptions := &azeventhubs.EventDataBatchOptions{}
-
-	test123, err := producerClient.GetEventHubProperties(
-		context.Background(),
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("Maybe it does? %v", test123)
-
 	batch, err := producerClient.NewEventDataBatch(context.TODO(), newBatchOptions)
-	log.Printf("Batch created: %v", batch)
-	log.Printf("Meme error: %v", err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create event batch: %w", err)
 	}
