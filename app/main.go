@@ -16,7 +16,7 @@ func main() {
 
 	listener, err := net.Listen("tcp", ":2001")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	defer listener.Close()
@@ -46,7 +46,7 @@ func handleConnection(conn net.Conn) {
 		message := scanner.Text()
 		err := handleMessage(message)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}
 
