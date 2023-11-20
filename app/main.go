@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 	"github.com/BertoldVdb/go-ais"
@@ -72,14 +73,10 @@ func handleMessage(message string) {
 
 	nm := aisnmea.NMEACodecNew(ais.CodecNew(false, false))
 
-	log.Printf("NMEACodecNew: %v\n", nm)
-
 	decoded, err := nm.ParseSentence(message)
 	if err != nil {
 		log.Fatalf("failed to decode NMEA sentence: %s", err)
 	}
-
-	log.Printf("Decoded: %v\n", decoded)
 
 	aisData := aisData{
 		Nmae: decoded.Packet.GetHeader().UserID,
@@ -88,13 +85,13 @@ func handleMessage(message string) {
 
 	log.Printf("AIS data: %v\n", aisData.Nmae)
 
-	err = sendMessageToEventHub(message)
+	err = sendMessageToEventHub(aisData)
 	if err != nil {
 		log.Fatalf("failed to send message to event hub: %s", err)
 	}
 }
 
-func sendMessageToEventHub(aisMessage string) error {
+func sendMessageToEventHub(aisData aisData) error {
 	producerClient, err := createProducerClient()
 	if err != nil {
 		return fmt.Errorf("failed to send message to event hub: %w", err)
@@ -102,7 +99,7 @@ func sendMessageToEventHub(aisMessage string) error {
 
 	defer producerClient.Close(context.TODO())
 
-	err = sendMessageAsBatch(producerClient, aisMessage)
+	err = sendMessageAsBatch(producerClient, aisData)
 	if err != nil {
 		return fmt.Errorf("failed to send message to event hub: %w", err)
 	}
@@ -119,13 +116,13 @@ func createProducerClient() (*azeventhubs.ProducerClient, error) {
 	return producerClient, nil
 }
 
-func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisMessage string) error {
+func sendMessageAsBatch(producerClient *azeventhubs.ProducerClient, aisData aisData) error {
 	batch, err := createEventBatch(producerClient)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
 
-	err = fillEventBatch(batch, aisMessage)
+	err = fillEventBatch(batch, aisData)
 	if err != nil {
 		return fmt.Errorf("failed to send message as batch: %w", err)
 	}
@@ -147,8 +144,8 @@ func sendBatchToEventHub(batch *azeventhubs.EventDataBatch, producerClient *azev
 	return nil
 }
 
-func fillEventBatch(batch *azeventhubs.EventDataBatch, aisMessage string) error {
-	events := messageToEvents(aisMessage)
+func fillEventBatch(batch *azeventhubs.EventDataBatch, aisData aisData) error {
+	events := messageToEvents(aisData)
 	for _, event := range events {
 		err := batch.AddEventData(event, nil)
 		if err != nil {
@@ -169,10 +166,12 @@ func createEventBatch(producerClient *azeventhubs.ProducerClient) (*azeventhubs.
 	return batch, nil
 }
 
-func messageToEvents(aisMessage string) []*azeventhubs.EventData {
+func messageToEvents(aisMessage aisData) []*azeventhubs.EventData {
+	aisBytes, _ := json.Marshal(aisMessage)
+
 	return []*azeventhubs.EventData{
 		{
-			Body: []byte(aisMessage),
+			Body: aisBytes,
 		},
 	}
 }
