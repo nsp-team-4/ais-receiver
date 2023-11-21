@@ -34,6 +34,7 @@ func HandleMessage(message string) error {
 
 		log.Printf("Decoded message successfully, packet: %s\n", packet.MessageType)
 
+		// TODO: This
 		// err = events.SendMessage(message)
 		// if err != nil {
 		// return fmt.Errorf("failed to handle message: %v", err)
@@ -59,6 +60,7 @@ func HandleMessage(message string) error {
 
 			log.Printf("Decoded multipart message successfully, packet: %s\n", packet.MessageType)
 
+			// TODO: This:
 			// err = events.SendMessage(message)
 			// if err != nil {
 			// 	return fmt.Errorf("failed to handle message: %v", err)
