@@ -1,6 +1,7 @@
 package ais
 
 import (
+	"ais-receiver/events"
 	"fmt"
 	"log"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 var messageParts = make(map[int]map[int]string)
 
 func HandleMessage(message string) error {
-	log.Printf("Received a new message: %s\n", message)
 	prefix, numberOfMessageParts, partNumber, messageID, err := simpleParse(message)
 	if err != nil {
 		return fmt.Errorf("failed to handle message: %v", err)
@@ -25,22 +25,18 @@ func HandleMessage(message string) error {
 	}
 
 	if numberOfMessageParts == 1 {
-		log.Printf("Message is complete: %s\n", message)
-
 		packet, err := decodeCompleteMessage(message)
 		if err != nil {
+			log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
 
-		log.Printf("Decoded message successfully, packet: %s\n", packet.MessageType)
-
-		// TODO: This
-		// err = events.SendMessage(message)
-		// if err != nil {
-		// return fmt.Errorf("failed to handle message: %v", err)
-		// }
+		// TODO: Send useful data to the event hub
+		err = events.SendMessage(message)
+		if err != nil {
+			return fmt.Errorf("failed to handle message: %v", err)
+		}
 	} else {
-		log.Printf("Message is not complete yet: %s\n", message)
 		err := addMessagePart(messageID, partNumber, message)
 		if err != nil {
 			return fmt.Errorf("failed to handle message part: %v", err)
@@ -55,16 +51,15 @@ func HandleMessage(message string) error {
 
 			packet, err := decodeCompleteMessages(allMessages)
 			if err != nil {
+				log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
 				return fmt.Errorf("failed to handle message: %v", err)
 			}
 
-			log.Printf("Decoded multipart message successfully, packet: %s\n", packet.MessageType)
-
-			// TODO: This:
-			// err = events.SendMessage(message)
-			// if err != nil {
-			// 	return fmt.Errorf("failed to handle message: %v", err)
-			// }
+			// TODO: Send useful data to the event hub
+			err = events.SendMessage(message)
+			if err != nil {
+				return fmt.Errorf("failed to handle message: %v", err)
+			}
 		}
 	}
 
