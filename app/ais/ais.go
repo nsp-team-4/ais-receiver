@@ -36,6 +36,8 @@ func HandleMessage(message string) error {
 		if err != nil {
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
+
+		log.Println("Ok", packet.Packet.GetHeader())
 	} else {
 		err := addMessagePart(messageID, partNumber, message)
 		if err != nil {
@@ -60,6 +62,8 @@ func HandleMessage(message string) error {
 			if err != nil {
 				return fmt.Errorf("failed to handle message: %v", err)
 			}
+
+			log.Println("Ok", packet.Packet.GetHeader())
 		}
 	}
 
