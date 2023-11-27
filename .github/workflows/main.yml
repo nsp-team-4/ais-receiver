@@ -8,7 +8,7 @@ on:
       - '*'
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -26,3 +26,12 @@ jobs:
           context: .
           push: true
           tags: auxority/ais-receiver:latest
+      
+      - name: Deploy to Azure Container Instances
+        uses: azure/aci-deploy@v1
+        with:
+          resource-group: north-sea-port
+          image: auxority/ais-receiver:latest
+          container-name: ais-receiver
+          container-port: 2001
+          location: 'west eu'
