@@ -29,13 +29,12 @@ func HandleMessage(message string) error {
 	if numberOfMessageParts == 1 {
 		packet, err := decodeCompleteMessage(message)
 		if err != nil {
-			log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
+			//log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
 
 		for _, allowedMessageType := range allowMessageTypes {
 			if packet.Packet.GetHeader().MessageID == allowedMessageType {
-				log.Println(packet.Packet.GetHeader().MessageID)
 				err = events.SendMessage(message)
 				if err != nil {
 					return fmt.Errorf("failed to handle message: %v", err)
