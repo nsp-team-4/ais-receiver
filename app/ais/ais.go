@@ -24,6 +24,8 @@ func HandleMessage(message string) error {
 		return fmt.Errorf("invalid prefix: %s", prefix)
 	}
 
+	allowMessageTypes := []uint8{1, 2, 3, 5, 18, 24, 27}
+
 	if numberOfMessageParts == 1 {
 		packet, err := decodeCompleteMessage(message)
 		if err != nil {
@@ -31,13 +33,19 @@ func HandleMessage(message string) error {
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
 
-		// TODO: Send useful data to the event hub
-		err = events.SendMessage(message)
-		if err != nil {
-			return fmt.Errorf("failed to handle message: %v", err)
+		for _, allowedMessageType := range allowMessageTypes {
+			if packet.Packet.GetHeader().MessageID == allowedMessageType {
+				log.Println(packet.Packet.GetHeader().MessageID)
+				err = events.SendMessage(message)
+				if err != nil {
+					return fmt.Errorf("failed to handle message: %v", err)
+				}
+
+				log.Println("Ok", packet.Packet.GetHeader())
+				break
+			}
 		}
 
-		log.Println("Ok", packet.Packet.GetHeader())
 	} else {
 		err := addMessagePart(messageID, partNumber, message)
 		if err != nil {
