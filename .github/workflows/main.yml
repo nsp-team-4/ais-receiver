@@ -14,11 +14,6 @@ jobs:
       - name: Check out the repository 🛎️
         uses: actions/checkout@v4
 
-      - name: Azure Login 🔑
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Docker Login 🔑
         uses: docker/login-action@v3.0.0
         with:
@@ -31,14 +26,3 @@ jobs:
           context: .
           push: true
           tags: auxority/ais-receiver:latest
-
-      - name: Deploy to Azure Container Instances ☁️
-        uses: azure/aci-deploy@v1
-        with:
-          resource-group: north-sea-port
-          dns-name-label: ais-receiver
-          ip-address: Private
-          image: auxority/ais-receiver:latest
-          container-name: ais-receiver
-          container-port: 2001
-          location: 'West EU'
