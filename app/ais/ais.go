@@ -95,11 +95,15 @@ func isAllowedMessagePacket(packet *aisnmea.VdmPacket) bool {
 
 func simpleParse(message string) (string, int, int, int, error) {
 	parts := strings.Split(message, ",")
-	if len(parts) < 4 {
-		return "", 0, 0, 0, fmt.Errorf("invalid message format")
+	if len(parts) <= 6 {
+		return "", 0, 0, 0, fmt.Errorf("invalid message format: %s", message)
 	}
 
-	prefix, rawNumberOfMessageParts, rawPartNumber, rawMessageID := parts[0], parts[1], parts[2], parts[3]
+	prefix, rawNumberOfMessageParts, rawPartNumber, rawMessageID, _, payload := parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
+
+	if payload == "" {
+		return "", 0, 0, 0, fmt.Errorf("payload from message is empty: %s", message)
+	}
 
 	numberOfMessageParts, err := strconv.Atoi(rawNumberOfMessageParts)
 	if err != nil {
