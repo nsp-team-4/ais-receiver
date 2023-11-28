@@ -15,17 +15,6 @@ import (
 // Slice to store the message parts in
 var messageParts = make(map[int]map[int]string)
 
-func handlePacket(rawPacket *aisnmea.VdmPacket) error {
-	packet := rawPacket.Packet
-	if packet == nil {
-		return fmt.Errorf("raw packet is empty: %v", rawPacket)
-	}
-
-	log.Println("OK", packet.GetHeader())
-
-	return nil
-}
-
 func HandleMessage(message string) error {
 	prefix, numberOfMessageParts, partNumber, messageID, err := simpleParse(message)
 	if err != nil {
@@ -84,6 +73,17 @@ func HandleMessage(message string) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+func handlePacket(rawPacket *aisnmea.VdmPacket) error {
+	packet := rawPacket.Packet
+	if packet == nil {
+		return fmt.Errorf("raw packet is empty: %v", rawPacket)
+	}
+
+	log.Println("OK", packet.GetHeader())
 
 	return nil
 }

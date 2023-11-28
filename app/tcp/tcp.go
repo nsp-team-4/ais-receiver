@@ -81,6 +81,7 @@ func processMessage(scanner *bufio.Scanner) {
 func handleMessage(message string) {
 	err := ais.HandleMessage(message)
 	if err != nil {
+		log.Printf("Message causing the error: %s\n", message)
 		log.Println(err)
 	}
 }
