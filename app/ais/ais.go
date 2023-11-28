@@ -98,7 +98,6 @@ func simpleParse(message string) (string, int, int, int, error) {
 	}
 
 	prefix, rawNumberOfMessageParts, rawPartNumber, rawMessageID, _, payload := parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
-
 	if payload == "" {
 		return "", 0, 0, 0, fmt.Errorf("payload from message is empty: %s", message)
 	}
