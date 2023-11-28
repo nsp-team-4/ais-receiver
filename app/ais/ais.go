@@ -4,6 +4,7 @@ import (
 	"ais-receiver/events"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -24,47 +25,13 @@ func HandleMessage(message string) error {
 		return fmt.Errorf("invalid prefix: %s", prefix)
 	}
 
-	allowMessageTypes := []uint8{1, 2, 3, 5, 18, 24, 27}
-
 	if numberOfMessageParts == 1 {
 		packet, err := decodeCompleteMessage(message)
 		if err != nil {
-			//log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
 
-		for _, allowedMessageType := range allowMessageTypes {
-			if packet.Packet.GetHeader().MessageID == allowedMessageType {
-				err = events.SendMessage(message)
-				if err != nil {
-					return fmt.Errorf("failed to handle message: %v", err)
-				}
-
-				log.Println("Ok", packet.Packet.GetHeader())
-				break
-			}
-		}
-
-	} else {
-		err := addMessagePart(messageID, partNumber, message)
-		if err != nil {
-			return fmt.Errorf("failed to handle message part: %v", err)
-		}
-
-		if isMessageComplete(messageID, numberOfMessageParts) {
-			allMessages := getMultipartMessages(messageID)
-			removeCompleteMessage(messageID)
-			if allMessages == nil {
-				return fmt.Errorf("failed to retrieve complete message")
-			}
-
-			packet, err := decodeCompleteMessages(allMessages)
-			if err != nil {
-				log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
-				return fmt.Errorf("failed to handle message: %v", err)
-			}
-
-			// TODO: Send useful data to the event hub
+		if isAllowedMessagePacket(packet) {
 			err = events.SendMessage(message)
 			if err != nil {
 				return fmt.Errorf("failed to handle message: %v", err)
@@ -72,9 +39,42 @@ func HandleMessage(message string) error {
 
 			log.Println("Ok", packet.Packet.GetHeader())
 		}
+	} else {
+		err := addMessagePart(messageID, partNumber, message)
+		if err != nil {
+			return fmt.Errorf("failed to handle message part: %v", err)
+		}
+
+		if isMessageComplete(messageID, numberOfMessageParts) {
+			fullMessage := getMultipartMessage(messageID)
+			removeCompleteMessage(messageID)
+			if fullMessage == nil {
+				return fmt.Errorf("failed to retrieve complete message")
+			}
+
+			packet, err := decodeCompleteMessages(fullMessage)
+			if err != nil {
+				log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
+				return fmt.Errorf("failed to handle message: %v", err)
+			}
+
+			if isAllowedMessagePacket(packet) {
+				err = events.SendMessage(message)
+				if err != nil {
+					return fmt.Errorf("failed to handle message: %v", err)
+				}
+
+				log.Println("Ok", packet.Packet.GetHeader())
+			}
+		}
 	}
 
 	return nil
+}
+
+func isAllowedMessagePacket(packet *aisnmea.VdmPacket) bool {
+	allowedMessageTypes := []uint8{1, 2, 3, 5, 18, 24, 27}
+	return slices.Contains(allowedMessageTypes, packet.Packet.GetHeader().MessageID)
 }
 
 func simpleParse(message string) (string, int, int, int, error) {
@@ -144,7 +144,7 @@ func isMessageComplete(messageID, numberOfMessageParts int) bool {
 	return len(messageParts[messageID]) == numberOfMessageParts
 }
 
-func getMultipartMessages(messageID int) []string {
+func getMultipartMessage(messageID int) []string {
 	if _, ok := messageParts[messageID]; !ok {
 		return nil
 	}
