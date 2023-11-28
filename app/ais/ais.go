@@ -95,7 +95,7 @@ func isAllowedMessagePacket(packet *aisnmea.VdmPacket) bool {
 
 func simpleParse(message string) (string, int, int, int, error) {
 	parts := strings.Split(message, ",")
-	if len(parts) <= 6 {
+	if len(parts) < 7 {
 		return "", 0, 0, 0, fmt.Errorf("invalid message format: %s", message)
 	}
 
