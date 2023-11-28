@@ -2,8 +2,8 @@ package ais
 
 import (
 	"ais-receiver/events"
+	"encoding/json"
 	"fmt"
-	"log"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,11 +32,6 @@ func HandleMessage(message string) error {
 		}
 
 		if isAllowedMessagePacket(rawPacket) {
-			err = events.SendMessage(message)
-			if err != nil {
-				return fmt.Errorf("failed to handle message: %v", err)
-			}
-
 			err = handlePacket(rawPacket)
 			if err != nil {
 				return fmt.Errorf("failed to handle message: %v", err)
@@ -61,11 +56,6 @@ func HandleMessage(message string) error {
 			}
 
 			if isAllowedMessagePacket(rawPacket) {
-				err = events.SendMessage(message)
-				if err != nil {
-					return fmt.Errorf("failed to handle message: %v", err)
-				}
-
 				err = handlePacket(rawPacket)
 				if err != nil {
 					return fmt.Errorf("failed to handle message: %v", err)
@@ -83,7 +73,15 @@ func handlePacket(rawPacket *aisnmea.VdmPacket) error {
 		return fmt.Errorf("raw packet is empty: %v", rawPacket)
 	}
 
-	log.Println("OK", packet.GetHeader())
+	jsonPacket, err := json.Marshal(packet)
+	if err != nil {
+		return fmt.Errorf("failed to handle message: %v", err)
+	}
+
+	err = events.SendMessage(string(jsonPacket))
+	if err != nil {
+		return fmt.Errorf("failed to handle message: %v", err)
+	}
 
 	return nil
 }
