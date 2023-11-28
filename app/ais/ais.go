@@ -15,6 +15,17 @@ import (
 // Slice to store the message parts in
 var messageParts = make(map[int]map[int]string)
 
+func handlePacket(rawPacket *aisnmea.VdmPacket) error {
+	packet := rawPacket.Packet
+	if packet == nil {
+		return fmt.Errorf("raw packet is empty: %v", rawPacket)
+	}
+
+	log.Println("OK", packet.GetHeader())
+
+	return nil
+}
+
 func HandleMessage(message string) error {
 	prefix, numberOfMessageParts, partNumber, messageID, err := simpleParse(message)
 	if err != nil {
@@ -26,18 +37,21 @@ func HandleMessage(message string) error {
 	}
 
 	if numberOfMessageParts == 1 {
-		packet, err := decodeCompleteMessage(message)
+		rawPacket, err := decodeCompleteMessage(message)
 		if err != nil {
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
 
-		if isAllowedMessagePacket(packet) {
+		if isAllowedMessagePacket(rawPacket) {
 			err = events.SendMessage(message)
 			if err != nil {
 				return fmt.Errorf("failed to handle message: %v", err)
 			}
 
-			log.Println("Ok", packet.Packet.GetHeader())
+			err = handlePacket(rawPacket)
+			if err != nil {
+				return fmt.Errorf("failed to handle message: %v", err)
+			}
 		}
 	} else {
 		err := addMessagePart(messageID, partNumber, message)
@@ -52,19 +66,21 @@ func HandleMessage(message string) error {
 				return fmt.Errorf("failed to retrieve complete message")
 			}
 
-			packet, err := decodeCompleteMessages(fullMessage)
+			rawPacket, err := decodeCompleteMessages(fullMessage)
 			if err != nil {
-				log.Println(packet.MessageType) // TODO: REMOVE THIS TEMPORARY LINE
 				return fmt.Errorf("failed to handle message: %v", err)
 			}
 
-			if isAllowedMessagePacket(packet) {
+			if isAllowedMessagePacket(rawPacket) {
 				err = events.SendMessage(message)
 				if err != nil {
 					return fmt.Errorf("failed to handle message: %v", err)
 				}
 
-				log.Println("Ok", packet.Packet.GetHeader())
+				err = handlePacket(rawPacket)
+				if err != nil {
+					return fmt.Errorf("failed to handle message: %v", err)
+				}
 			}
 		}
 	}
@@ -113,7 +129,6 @@ func decodeCompleteMessages(messages []string) (*aisnmea.VdmPacket, error) {
 		}
 
 		if decoded != nil {
-			fmt.Printf("%+v\n\n", decoded)
 			return decoded, nil
 		}
 	}

@@ -1,0 +1,13 @@
+FROM golang:alpine
+
+WORKDIR /app
+
+COPY ./app .
+
+# Add required dependencies for go-sqlite3, and add curl
+RUN apk add --update --no-cache gcc musl-dev curl
+
+# CompileDaemon documentation: https://github.com/githubnemo/CompileDaemon
+RUN go install github.com/githubnemo/CompileDaemon@latest
+
+ENTRYPOINT CompileDaemon -build="go build -tags \"linux\" -o /app/bin/main" -command="/app/bin/main" -polling
