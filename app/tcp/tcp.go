@@ -79,7 +79,7 @@ func processMessage(scanner *bufio.Scanner) {
 }
 
 func handleMessage(message string) {
-	err := ais.HandleMessage(message)
+	err := ais.MessageReceiver(message)
 	if err != nil {
 		log.Println(err)
 	}

@@ -1,6 +1,7 @@
 package ais
 
 import (
+	"ais-receiver/ais/Policy"
 	"ais-receiver/events"
 	"encoding/json"
 	"fmt"
@@ -15,55 +16,92 @@ import (
 // Slice to store the message parts in
 var messageParts = make(map[int]map[int]string)
 
-func HandleMessage(message string) error {
+func MessageReceiver(message string) error {
+	prefix, numberOfMessageParts, partNumber, messageID, err := ParseMessage(message)
+
+	if err != nil {
+		return err
+	}
+
+	if err := Policy.AssertMessageIsAivdm(prefix); err != nil {
+		return err
+	}
+
+	return handleMessage(message, numberOfMessageParts, messageID, partNumber)
+}
+
+func ParseMessage(message string) (string, int, int, int, error) {
 	prefix, numberOfMessageParts, partNumber, messageID, err := simpleParse(message)
+	if err != nil {
+		return "", 0, 0, 0, fmt.Errorf("failed to parse message: %v", err)
+	}
+	return prefix, numberOfMessageParts, partNumber, messageID, nil
+}
+
+func handleMessage(message string, numberOfMessageParts int, messageID int, partNumber int) error {
+	if numberOfMessageParts == 1 {
+		return handleSinglePartMessage(message)
+	} else {
+		return collectMessageParts(message, numberOfMessageParts, messageID, partNumber)
+	}
+}
+
+func collectMessageParts(message string, numberOfMessageParts int, messageID int, partNumber int) error {
+	if err := handleMessagePart(message, messageID, partNumber); err != nil {
+		return err
+	}
+
+	if isMessageComplete(messageID, numberOfMessageParts) {
+		return handleCompleteMultiPartMessage(messageID)
+	}
+	return nil
+}
+
+func handleCompleteMultiPartMessage(messageID int) error {
+	fullMessage := getMultipartMessage(messageID)
+	removeCompleteMessage(messageID)
+	if fullMessage == nil {
+		return fmt.Errorf("failed to retrieve complete message")
+	}
+
+	rawPacket, err := decodeCompleteMessages(fullMessage)
 	if err != nil {
 		return fmt.Errorf("failed to handle message: %v", err)
 	}
 
-	if prefix != "!AIVDM" {
-		return fmt.Errorf("invalid prefix: %s", prefix)
-	}
+	return handleRawPacket(rawPacket)
+}
 
-	if numberOfMessageParts == 1 {
-		rawPacket, err := decodeCompleteMessage(message)
+func handleRawPacket(rawPacket *aisnmea.VdmPacket) error {
+	if isAllowedMessagePacket(rawPacket) {
+		err := handlePacket(rawPacket)
 		if err != nil {
 			return fmt.Errorf("failed to handle message: %v", err)
 		}
+	}
+	return nil
+}
 
-		if isAllowedMessagePacket(rawPacket) {
-			err = handlePacket(rawPacket)
-			if err != nil {
-				return fmt.Errorf("failed to handle message: %v", err)
-			}
-		}
-	} else {
-		err := addMessagePart(messageID, partNumber, message)
-		if err != nil {
-			return fmt.Errorf("failed to handle message part: %v", err)
-		}
+func handleMessagePart(message string, messageID int, partNumber int) error {
+	err := addMessagePart(messageID, partNumber, message)
+	if err != nil {
+		return fmt.Errorf("failed to handle message part: %v", err)
+	}
+	return nil
+}
 
-		if isMessageComplete(messageID, numberOfMessageParts) {
-			fullMessage := getMultipartMessage(messageID)
-			removeCompleteMessage(messageID)
-			if fullMessage == nil {
-				return fmt.Errorf("failed to retrieve complete message")
-			}
-
-			rawPacket, err := decodeCompleteMessages(fullMessage)
-			if err != nil {
-				return fmt.Errorf("failed to handle message: %v", err)
-			}
-
-			if isAllowedMessagePacket(rawPacket) {
-				err = handlePacket(rawPacket)
-				if err != nil {
-					return fmt.Errorf("failed to handle message: %v", err)
-				}
-			}
-		}
+func handleSinglePartMessage(message string) error {
+	rawPacket, err := decodeCompleteMessage(message)
+	if err != nil {
+		return fmt.Errorf("failed to handle message: %v", err)
 	}
 
+	if isAllowedMessagePacket(rawPacket) {
+		err = handlePacket(rawPacket)
+		if err != nil {
+			return fmt.Errorf("failed to handle message: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -73,13 +111,16 @@ func handlePacket(rawPacket *aisnmea.VdmPacket) error {
 		return fmt.Errorf("raw packet is empty: %v", rawPacket)
 	}
 
+	return packetToJson(packet)
+}
+
+func packetToJson(packet ais.Packet) error {
 	jsonPacket, err := json.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("failed to handle message: %v", err)
 	}
 
-	err = events.SendMessage(string(jsonPacket))
-	if err != nil {
+	if err := events.SendMessage(string(jsonPacket)); err != nil {
 		return fmt.Errorf("failed to handle message: %v", err)
 	}
 
