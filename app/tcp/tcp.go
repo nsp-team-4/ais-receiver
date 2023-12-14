@@ -5,23 +5,39 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"strconv"
 
 	"ais-receiver/ais"
 )
 
 func RunServer() {
-	listener := createListener()
+	port, err := getPort()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	listener := createListener(port)
 	defer listener.Close()
 
-	log.Println("Server is running on port 2001")
+	log.Printf("Server is running on port %d\n", port)
 
 	for {
 		acceptAndHandleConnection(listener)
 	}
 }
 
-func createListener() net.Listener {
-	listener, err := net.Listen("tcp", ":2001")
+func getPort() (int, error) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	return strconv.Atoi(port)
+}
+
+func createListener(port int) net.Listener {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Println(err)
 	}
